@@ -7,6 +7,37 @@ if [ "$EUID" -eq 0 ]; then
   exit 1
 fi
 
+# Check if python3 is installed
+if ! command -v python3 &> /dev/null; then
+    echo "Error: python3 is not installed. Please install Python 3."
+    exit 1
+fi
+
+# Check if venv module is available
+if ! python3 -m venv --help > /dev/null 2>&1; then
+    echo "Error: python3-venv is not installed. Please install it (e.g., sudo apt install python3-venv)."
+    exit 1
+fi
+
+# Configure DBUS variables for headless/VM environments
+if [ -z "$XDG_RUNTIME_DIR" ]; then
+    export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+fi
+
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+    export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+fi
+
+# Check if the systemd user bus is accessible
+if [ ! -S "${XDG_RUNTIME_DIR}/bus" ]; then
+    echo "Warning: Systemd user bus socket not found at ${XDG_RUNTIME_DIR}/bus."
+    echo "This often happens in headless environments or if you haven't logged in."
+    echo "Try enabling lingering for your user to keep the user manager running:"
+    echo "  sudo loginctl enable-linger $USER"
+    echo "Then log out and back in, or reboot."
+    # Proceeding, but systemctl might fail
+fi
+
 # Deployment script for p2g-python on Linux using Systemd
 
 INSTALL_DIR="$(pwd)"
