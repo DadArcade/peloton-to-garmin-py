@@ -143,9 +143,9 @@ def run_sync(config_path):
 
 def main():
     parser = argparse.ArgumentParser(description="Sync Peloton workouts to Garmin Connect.")
-    parser.add_argument("-c", "--config", default="config.toml", help="Path to configuration file")
-    parser.add_argument("--daemon", action="store_true", help="Run in daemon mode (periodic sync)")
-    parser.add_argument("--interval", type=int, default=21600, help="Interval in seconds for daemon mode (default: 21600s / 6h)")
+    parser.add_argument("-c", "--config", default="config.toml", help="Path to configuration file (default: config.toml). Contains Peloton and Garmin credentials.")
+    parser.add_argument("--daemon", action="store_true", help="Run in daemon mode. The script will run continuously and sync periodically (useful for Docker/Systemd).")
+    parser.add_argument("--interval", type=int, default=21600, help="Interval in seconds for daemon mode (default: 21600s / 6h).")
     args = parser.parse_args()
 
     config_path = args.config
