@@ -15,7 +15,7 @@ source .venv/bin/activate
 pip install -e .
 
 # 2. Run Sync (Enter 2FA code if prompted)
-python src/p2g/main.py
+python3 -m p2g.main
 
 # 3. Cleanup (Optional)
 deactivate
