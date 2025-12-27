@@ -7,7 +7,7 @@ This project is a Python port of the [Peloton-to-Garmin C# project](https://gith
 This application uses a `config.toml` file for configuration.
 
 **Important: Garmin 2FA**
-If your Garmin account has Two-Factor Authentication (2FA) enabled, the script cannot log in automatically on the first run. You must run the script manually once in an interactive terminal to enter the 2FA code. This will generate authentication tokens which allow future background runs (Docker/Systemd) to work without prompts.
+If your Garmin account has Two-Factor Authentication (2FA) enabled, the script cannot log in automatically on the first run. You must run the script manually once in an interactive terminal to enter the 2FA code. This will generate authentication tokens and save them to config.toml, which allow future background runs (Docker/Systemd) to work without prompts.
 
 ### Manual Auth Steps (Virtual Environment)
 To perform the one-time manual authentication:
