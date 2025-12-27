@@ -65,8 +65,10 @@ if [ ! -x "$VENV_DIR/bin/pip" ]; then
 fi
 
 "$VENV_DIR/bin/python" -m pip install --upgrade pip
-# Install the package without build isolation (uses the venv's setuptools)
-"$VENV_DIR/bin/python" -m pip install --no-build-isolation .
+
+# Manually install dependencies to bypass build system (setuptools) issues
+echo "Installing runtime dependencies directly..."
+"$VENV_DIR/bin/python" -m pip install httpx pydantic pydantic-settings garmin-fit-sdk python-dotenv beautifulsoup4 oauthlib fit-tool
 
 # 3. Generate Systemd Service File
 mkdir -p "$USER_SYSTEMD_DIR"
@@ -84,6 +86,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 WorkingDirectory=$INSTALL_DIR
+Environment=PYTHONPATH=$INSTALL_DIR/src
 ExecStart=$VENV_DIR/bin/python -m p2g.main
 StandardOutput=journal
 StandardError=journal
