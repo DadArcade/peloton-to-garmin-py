@@ -1,0 +1,18 @@
+[project]
+name = "p2g-python"
+version = "0.1.0"
+description = "Python reimplementation of Peloton-to-Garmin sync"
+dependencies = [
+    "httpx",
+    "pydantic",
+    "pydantic-settings",
+    "garmin-fit-sdk",
+    "python-dotenv",
+    "beautifulsoup4",
+    "oauthlib",
+    "fit-tool",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

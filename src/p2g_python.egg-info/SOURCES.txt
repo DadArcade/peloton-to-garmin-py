@@ -1,0 +1,17 @@
+pyproject.toml
+src/p2g/__init__.py
+src/p2g/config.py
+src/p2g/convert.py
+src/p2g/exercise_mapping.py
+src/p2g/garmin.py
+src/p2g/main.py
+src/p2g/peloton.py
+src/p2g_python.egg-info/PKG-INFO
+src/p2g_python.egg-info/SOURCES.txt
+src/p2g_python.egg-info/dependency_links.txt
+src/p2g_python.egg-info/requires.txt
+src/p2g_python.egg-info/top_level.txt
+tests/test_converter.py
+tests/test_garmin_client.py
+tests/test_verify_strength.py
+tests/test_with_cs_data.py

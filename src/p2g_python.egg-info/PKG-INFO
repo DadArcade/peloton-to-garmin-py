@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: p2g-python
+Version: 0.1.0
+Summary: Python reimplementation of Peloton-to-Garmin sync
+Requires-Dist: httpx
+Requires-Dist: pydantic
+Requires-Dist: pydantic-settings
+Requires-Dist: garmin-fit-sdk
+Requires-Dist: python-dotenv
+Requires-Dist: beautifulsoup4
+Requires-Dist: oauthlib
+Requires-Dist: fit-tool
