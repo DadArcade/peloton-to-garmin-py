@@ -1,0 +1,17 @@
+services:
+  p2g:
+    build: .
+    image: p2g-python
+    container_name: peloton-to-garmin
+    volumes:
+      # Mount the configuration file. 
+      # ENSURE config.toml exists on host before running!
+      # We map it to /app/config/config.toml so the CMD works by default
+      - ./config.toml:/app/config/config.toml
+      # Persist downloaded workouts and fit files
+      - ./p2g_output:/app/output
+    environment:
+      # You can override config settings here
+      # P2G_Peloton__Email: "your_email"
+      # P2G_Peloton__Password: "your_password"
+      - PYTHONUNBUFFERED=1
