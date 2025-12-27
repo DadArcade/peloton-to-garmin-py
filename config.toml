@@ -1,7 +1,7 @@
 [Peloton]
 Email = "peloton_member@example.com"
 Password = "hunter2"
-MaxWorkoutsToDownload = 50
+MaxWorkoutsToDownload = 5
 BackupFolder = "backup"
 
 [Garmin]
