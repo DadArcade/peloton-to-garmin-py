@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+# Check if running as root
+if [ "$EUID" -eq 0 ]; then
+  echo "Error: Please do not run this script as root (sudo). Run it as your regular user to install the user-level systemd service."
+  exit 1
+fi
+
 # Deployment script for p2g-python on Linux using Systemd
 
 INSTALL_DIR="$(pwd)"
