@@ -1,8 +1,49 @@
+# Peloton to Garmin Sync (Python)
+
+This project is a Python port of the [Peloton-to-Garmin C# project](https://github.com/philosowaffle/peloton-to-garmin/). Unlike the original, this project is just a command-line application that can be run as a background service or as a periodic job. It automatically downloads Peloton workout data and uploads it to Garmin Connect.
+
+## Configuration & First Run
+
+This application uses a `config.toml` file for configuration.
+
+**Important: Garmin 2FA**
+If your Garmin account has Two-Factor Authentication (2FA) enabled, the script cannot log in automatically on the first run. You must run the script manually once in an interactive terminal to enter the 2FA code. This will generate authentication tokens which allow future background runs (Docker/Systemd) to work without prompts.
+
+### Manual Auth Steps (Virtual Environment)
+To perform the one-time manual authentication:
+
+1. **Create and activate a virtual environment**:
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+
+2. **Install the project dependencies**:
+   ```bash
+   pip install -e .
+   ```
+
+3. **Run the script**:
+   ```bash
+   # Ensure config.toml is present and filled out with your credentials
+   python src/p2g/main.py
+   ```
+   Follow the prompts to enter your 2FA code. Once successfully authenticated, the tokens will be saved to your configuration, and you can proceed with Docker or Systemd deployment.
+
+4. **Cleanup**:
+   After authentication is complete, you can remove the virtual environment:
+   ```bash
+   deactivate
+   rm -rf .venv
+   ```
+
+---
+
 # Deployment Guide for Linux
 
-This guide describes how to deploy the Peloton to Garmin Sync (`p2g-python`) application on Linux using either **Docker** or **Systemd**.
+This guide describes how to deploy the application on Linux using either **Docker** or **Systemd**.
 
-## Method 1: Docker (Recommended)
+## Method 1: Docker
 
 This method isolates the application and its dependencies.
 
@@ -12,8 +53,8 @@ This method isolates the application and its dependencies.
 ### Setup
 
 1. **Configuration**:
-   - Ensure you have a `config.toml` file in the project directory.
-   - If you haven't authenticated yet, it is easiest to run the script locally once to generate the tokens, or provide credentials via environment variables.
+   - Edit the `config.toml` file in the project directory to add your credentials.
+   - See "Configuration & First Run" above.
 
 2. **Run with Docker Compose**:
    ```bash
@@ -26,7 +67,7 @@ This method isolates the application and its dependencies.
    - Mount `p2g_output/` to persist your downloaded FIT files.
    
 3. **Running in Background**:
-   To run as a background service:
+   To run as a background service (daemon mode):
    ```bash
    docker-compose up -d
    ```
@@ -43,7 +84,7 @@ Example `docker-compose.yml` snippet:
 
 ---
 
-## Method 2: Systemd Service (Native)
+## Method 2: Systemd Service
 
 This method runs the application as a user-level background service, scheduled by a Systemd timer.
 
