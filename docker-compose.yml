@@ -14,4 +14,6 @@ services:
       # You can override config settings here
       # P2G_Peloton__Email: "your_email"
       # P2G_Peloton__Password: "your_password"
+
       - PYTHONUNBUFFERED=1
+    command: ["--config", "/app/config/config.toml", "--daemon"]

@@ -6,21 +6,16 @@ import sys
 import os
 import argparse
 import re
+import time
 from datetime import datetime, timezone
 
-def main():
-    parser = argparse.ArgumentParser(description="Sync Peloton workouts to Garmin Connect.")
-    parser.add_argument("-c", "--config", default="config.toml", help="Path to configuration file")
-    args = parser.parse_args()
-
-    config_path = args.config
-
+def run_sync(config_path):
     print(f"Loading configuration from {config_path}...")
     try:
         settings = load_settings(config_path)
     except Exception as e:
         print(f"Error loading settings: {e}")
-        sys.exit(1)
+        return
 
     # 1. Peloton
     print("Authenticating with Peloton...")
@@ -29,7 +24,7 @@ def main():
         peloton.authenticate()
     except Exception as e:
         print(f"Peloton authentication failed: {e}")
-        sys.exit(1)
+        return
 
     # 2. Garmin
     garmin = None
@@ -41,7 +36,7 @@ def main():
                 garmin.authenticate()
             except Exception as e:
                 print(f"Garmin authentication failed: {e}")
-                sys.exit(1)
+                return
         else:
             print("Garmin upload enabled but credentials missing. Skipping upload and saving locally only.")
 
@@ -117,11 +112,6 @@ def main():
         class_id = ride.get("id")
 
         # 2️⃣ If there is no ride ID, fall back to the **strength‑plan GUID**.
-        # The GUID lives inside `strength_plan_overlay_metadata`. The C# code
-        # uses this value (e.g. "38300d97e2d5432fadadbe92dffeb3fb") to fetch the
-        # class segments. In the JSON we inspected `strength_plan_id` is the
-        # workout’s own ID, which does NOT have segment data, so we must look
-        # inside the overlay metadata instead.
         if not class_id:
             overlay = details.get("strength_plan_overlay_metadata") or {}
             class_id = overlay.get("strength_plan_id") or details.get("strength_plan_id")
@@ -150,6 +140,28 @@ def main():
                 print(f"Failed to upload workout {workout_id} to Garmin: {e}")
 
     print("Sync complete.")
+
+def main():
+    parser = argparse.ArgumentParser(description="Sync Peloton workouts to Garmin Connect.")
+    parser.add_argument("-c", "--config", default="config.toml", help="Path to configuration file")
+    parser.add_argument("--daemon", action="store_true", help="Run in daemon mode (periodic sync)")
+    parser.add_argument("--interval", type=int, default=21600, help="Interval in seconds for daemon mode (default: 21600s / 6h)")
+    args = parser.parse_args()
+
+    config_path = args.config
+
+    if args.daemon:
+        print(f"Starting in daemon mode. Syncing every {args.interval} seconds.")
+        while True:
+            try:
+                run_sync(config_path)
+            except Exception as e:
+                print(f"Global error during sync: {e}")
+            
+            print(f"Sleeping for {args.interval} seconds...")
+            time.sleep(args.interval)
+    else:
+        run_sync(config_path)
 
 if __name__ == "__main__":
     main()
