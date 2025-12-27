@@ -47,6 +47,12 @@ systemctl --user enable --now p2g.timer
 
 # Check Logs
 journalctl --user -u p2g -f
+
+# Uninstall
+systemctl --user stop p2g.timer
+systemctl --user disable p2g.timer
+rm ~/.config/systemd/user/p2g.service ~/.config/systemd/user/p2g.timer
+systemctl --user daemon-reload
 ```
 
 ## Configuration
