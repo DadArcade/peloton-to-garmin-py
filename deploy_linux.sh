@@ -51,7 +51,8 @@ echo "Installation Directory: $INSTALL_DIR"
 # 1. Create Virtual Env
 if [ ! -d "$VENV_DIR" ]; then
     echo "Creating virtual environment..."
-    python3 -m venv "$VENV_DIR"
+    # Use --system-site-packages to inherit setuptools/pip from system if missing in restricted repo
+    python3 -m venv --system-site-packages "$VENV_DIR"
 fi
 
 # 2. Install Dependencies
@@ -64,7 +65,8 @@ if [ ! -x "$VENV_DIR/bin/pip" ]; then
 fi
 
 "$VENV_DIR/bin/python" -m pip install --upgrade pip
-"$VENV_DIR/bin/python" -m pip install .
+# Install the package without build isolation (uses the venv's setuptools)
+"$VENV_DIR/bin/python" -m pip install --no-build-isolation .
 
 # 3. Generate Systemd Service File
 mkdir -p "$USER_SYSTEMD_DIR"
