@@ -56,8 +56,15 @@ fi
 
 # 2. Install Dependencies
 echo "Installing dependencies..."
-"$VENV_DIR/bin/pip" install --upgrade pip
-"$VENV_DIR/bin/pip" install .
+
+# Ensure pip is installed in the venv (sometimes missing on Debian/Ubuntu)
+if [ ! -x "$VENV_DIR/bin/pip" ]; then
+    echo "pip binary not found in venv. Attempting to bootstrap with ensurepip..."
+    "$VENV_DIR/bin/python" -m ensurepip --default-pip || true
+fi
+
+"$VENV_DIR/bin/python" -m pip install --upgrade pip
+"$VENV_DIR/bin/python" -m pip install .
 
 # 3. Generate Systemd Service File
 mkdir -p "$USER_SYSTEMD_DIR"
