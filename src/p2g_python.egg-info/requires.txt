@@ -1,8 +1,0 @@
-httpx
-pydantic
-pydantic-settings
-garmin-fit-sdk
-python-dotenv
-beautifulsoup4
-oauthlib
-fit-tool
