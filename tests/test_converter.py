@@ -1,5 +1,6 @@
 import os
 import pytest
+
 from datetime import datetime, timezone
 from p2g.convert import FitConverter
 from fit_tool.fit_file import FitFile

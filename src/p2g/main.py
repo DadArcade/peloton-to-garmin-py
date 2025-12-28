@@ -2,7 +2,7 @@ from .config import load_settings
 from .peloton import PelotonClient
 from .garmin import GarminClient
 from .convert import FitConverter
-import sys
+
 import os
 import argparse
 import re

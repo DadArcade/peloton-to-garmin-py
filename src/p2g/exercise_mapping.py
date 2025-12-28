@@ -6,7 +6,7 @@ from fit_tool.profile.profile_type import (
     PushUpExerciseName, DeadliftExerciseName, HipSwingExerciseName,
     LateralRaiseExerciseName, LungeExerciseName, ShrugExerciseName,
     CarryExerciseName, TricepsExtensionExerciseName, SitUpExerciseName,
-    ChopExerciseName, SetType
+    ChopExerciseName,
 )
 
 class GarminExercise:
