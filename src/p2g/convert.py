@@ -151,7 +151,7 @@ class FitConverter:
                 zones_msg.functional_threshold_power = ftp
                 zones_msg.pwr_calc_type = PwrZoneCalc.PERCENT_FTP
         
-        max_hr = self._get_user_max_hr(performance)
+        max_hr = self._get_user_max_hr(performance, user_data)
         if max_hr:
             zones_msg.max_heart_rate = max_hr
             zones_msg.hr_calc_type = HrZoneCalc.PERCENT_MAX_HR
@@ -340,8 +340,9 @@ class FitConverter:
         
         # Power
         output_metric = next((m for m in metrics if m.get("slug") == "output"), {})
-        session.avg_power = int(output_metric.get("average_value") or summary_data.get("avg_output") or 0)
-        session.max_power = int(output_metric.get("max_value") or summary_data.get("max_output") or 0)
+        # Check both avg_output and avg_power since Peloton tags vary
+        session.avg_power = int(output_metric.get("average_value") or summary_data.get("avg_output") or summary_data.get("avg_power") or 0)
+        session.max_power = int(output_metric.get("max_value") or summary_data.get("max_output") or summary_data.get("max_power") or 0)
         session.total_work = int(workout.get("total_work") or summary_data.get("total_work") or 0)
         
         # Speed
@@ -358,21 +359,6 @@ class FitConverter:
         if grade_metric:
             session.avg_grade = float(grade_metric.get("average_value") or 0)
             session.max_pos_grade = float(grade_metric.get("max_value") or 0)
-        
-        # HR
-        hr_metric = next((m for m in metrics if m.get("slug") == "heart_rate"), {})
-        session.avg_heart_rate = int(hr_metric.get("average_value") or summary_data.get("avg_heart_rate") or 0)
-        session.max_heart_rate = int(hr_metric.get("max_value") or summary_data.get("max_heart_rate") or 0)
-        
-        # HR zones
-        hr_zones = hr_metric.get("zones") or []
-        if hr_zones:
-            zone_durations = [0.0] * 5
-            for i in range(1, 6):
-                zone = next((z for z in hr_zones if z.get("slug") == f"zone{i}"), None)
-                if zone:
-                    zone_durations[i-1] = float(zone.get("duration") or 0)
-            session.time_in_hr_zone = zone_durations
         
         # Cadence
         cad_slug = "cadence" if sport != Sport.ROWING else "stroke_rate"
@@ -405,15 +391,68 @@ class FitConverter:
                     power_values = power_metric.get("values") or []
                     if power_values:
                         p_zones = self._calculate_power_zones(ftp)
-                        zone_durations = [0.0] * 7
+                        
+                        pwr_zone_durations = [0] * 7
                         for val in power_values:
                             if val is None: continue
                             for idx, (low, high) in enumerate(p_zones):
                                 if low <= val <= high:
-                                    zone_durations[idx] += 1
+                                    pwr_zone_durations[idx] += 1
                                     break
-                        session.time_in_power_zone = zone_durations
+                        
+                        session.time_in_power_zone = [int(d) for d in pwr_zone_durations]
+
+        # HR (Manual calculation using % Max HR to avoid buggy Peloton data)
+        hr_metric = next((m for m in metrics if m.get("slug") == "heart_rate"), {})
+        session.avg_heart_rate = int(hr_metric.get("average_value") or summary_data.get("avg_heart_rate") or 0)
         
+        # Get Max HR for zone boundaries
+        max_hr = self._get_user_max_hr(performance, user_data)
+        if not max_hr:
+             max_hr = int(hr_metric.get("max_value") or summary_data.get("max_heart_rate") or 0)
+        session.max_heart_rate = max_hr
+
+        hr_values = hr_metric.get("values") or []
+        if hr_values and max_hr > 0:
+            # Standard Garmin zones: 50%, 60%, 70%, 80%, 90% of max
+            # Zone 1: 50-60%, Zone 2: 60-70%, Zone 3: 70-80%, Zone 4: 80-90%, Zone 5: 90-100%
+            hr_boundaries = [
+                (0.50 * max_hr, 0.60 * max_hr),
+                (0.60 * max_hr, 0.70 * max_hr),
+                (0.70 * max_hr, 0.80 * max_hr),
+                (0.80 * max_hr, 0.90 * max_hr),
+                (0.90 * max_hr, max_hr)
+            ]
+            
+            # Garmin expects [below_z1, z1, z2, z3, z4, z5]
+            # Initialize with 6 buckets (index 0 is below Z1)
+            hr_durations = [0] * 6
+            for val in hr_values:
+                if val is None: continue
+                
+                # Check if below Zone 1 (50% max_hr)
+                if val < hr_boundaries[0][0]:
+                    hr_durations[0] += 1
+                    continue
+                    
+                for idx, (low, high) in enumerate(hr_boundaries):
+                    # Make it slightly more robust with float comparison
+                    if val >= low and (val < high or (idx == 4 and val >= high)):
+                        hr_durations[idx + 1] += 1
+                        break
+            
+            session.time_in_hr_zone = hr_durations
+        else:
+            # Fallback if no HR data or Max HR
+            hr_zones_def = hr_metric.get("zones") or []
+            if hr_zones_def:
+                dt = [0] * 5
+                for i in range(1, 6):
+                    zone = next((z for z in hr_zones_def if z.get("slug") == f"zone{i}"), None)
+                    if zone:
+                        dt[i-1] = int(float(zone.get("duration") or 0))
+                session.time_in_hr_zone = [0] + dt
+
         return session
 
     def _calculate_power_zones(self, ftp: float) -> List[tuple]:
@@ -805,12 +844,28 @@ class FitConverter:
             
         return ftp
 
-    def _get_user_max_hr(self, performance: Dict[str, Any]) -> Optional[int]:
+    def _get_user_max_hr(self, performance: Dict[str, Any], user_data: Optional[Dict[str, Any]] = None) -> Optional[int]:
+        # 1. Check user_data
+        if user_data:
+            max_hr = user_data.get("Customized_Max_Heart_Rate")
+            if max_hr:
+                return int(max_hr)
+
+        # 2. Check performance metrics
         hr_metric = next((m for m in (performance.get("metrics") or []) if m.get("slug") == "heart_rate"), {})
         zones = hr_metric.get("zones") or []
         zone5 = next((z for z in zones if z.get("slug") == "zone5"), None)
         if zone5:
-            return int(zone5.get("max_value") or 0)
+            m_val = zone5.get("max_value")
+            if m_val:
+                return int(m_val)
+        
+        # 3. Check summary
+        summary = performance.get("summary") or {}
+        max_hr = summary.get("max_heart_rate")
+        if max_hr:
+            return int(max_hr)
+
         return None
 
     # Helper methods
