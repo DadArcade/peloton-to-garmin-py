@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.venv/
+venv/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Tests / Coverage
+.pytest_cache/
+test_output/
+test_verify_strength_output/
+
+# Config
+.env
+
+# C#
+csharpcode

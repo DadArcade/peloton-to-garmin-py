@@ -35,12 +35,17 @@ def test_cycling_conversion(tmp_path):
     
     performance = {
         "duration": 60,
-        "seconds_since_pedaling_start": [0, 30, 60],
+        "seconds_since_pedaling_start": list(range(60)),
         "metrics": [
-            {"slug": "heart_rate", "values": [140, 150, 160], "zones": [{"slug": "zone1", "duration": 10}, {"slug": "zone2", "duration": 50}]},
-            {"slug": "output", "values": [180, 200, 220]},
-            {"slug": "cadence", "values": [85, 90, 95], "display_unit": "rpm"},
-            {"slug": "speed", "values": [20, 21, 22], "display_unit": "mph", "average_value": 21, "max_value": 22}
+            {
+                "slug": "heart_rate", 
+                "values": [100]*10 + [115]*50, 
+                "max_value": 180,
+                "zones": [{"slug": "zone1", "duration": 10}, {"slug": "zone2", "duration": 50}]
+            },
+            {"slug": "output", "values": [200]*60},
+            {"slug": "cadence", "values": [90]*60, "display_unit": "rpm"},
+            {"slug": "speed", "values": [21]*60, "display_unit": "mph", "average_value": 21, "max_value": 22}
         ]
     }
     
@@ -63,7 +68,7 @@ def test_cycling_conversion(tmp_path):
     activities = [m for m in messages if isinstance(m, ActivityMessage)]
     workouts = [m for m in messages if isinstance(m, WorkoutMessage)]
     
-    assert len(records) == 3
+    assert len(records) == 60
     assert len(laps) == 2
     assert len(sessions) == 1
     assert len(activities) == 1
@@ -73,7 +78,7 @@ def test_cycling_conversion(tmp_path):
     
     session = sessions[0]
     assert session.avg_power == 200
-    assert abs(session.time_in_hr_zone[0] - 10.0) < 0.1
+    assert abs(session.time_in_hr_zone[1] - 10.0) < 0.1
     assert any(t > 0 for t in session.time_in_power_zone)
     
     # Verify Distance and Speed
