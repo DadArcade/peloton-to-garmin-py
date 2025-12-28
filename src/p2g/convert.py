@@ -417,10 +417,13 @@ class FitConverter:
         # HR (Manual calculation using % Max HR to avoid buggy Peloton data)
         hr_metric = next((m for m in metrics if m.get("slug") == "heart_rate"), {})
         session.avg_heart_rate = int(hr_metric.get("average_value") or summary_data.get("avg_heart_rate") or 0)
+        session.max_heart_rate = int(hr_metric.get("max_value") or summary_data.get("max_heart_rate") or 0)
         
         # Get Max HR for zone boundaries
         max_hr = self._get_user_max_hr(performance, user_data)
-        session.max_heart_rate = max_hr
+        
+        if session.max_heart_rate == 0:
+            session.max_heart_rate = max_hr
 
         # Determine the number of seconds to process
         # Match C# windowing: use the intended class length if metrics over-run
