@@ -412,36 +412,54 @@ class FitConverter:
              max_hr = int(hr_metric.get("max_value") or summary_data.get("max_heart_rate") or 0)
         session.max_heart_rate = max_hr
 
-        hr_values = hr_metric.get("values") or []
+        raw_hr_values = hr_metric.get("values") or []
+        # Find the most accurate duration (active workout time)
+        # Garmin/C# usually aim for the 'official' duration which might be 1812 for a 30m ride
+        v_watch = workout.get("total_video_watch_time_seconds") or workout.get("v2_total_video_watch_time_seconds")
+        official_duration = workout.get("ride", {}).get("duration") or workout.get("duration") or summary_data.get("duration")
+        # HEURISTIC: If watch time exists and is close to samples, it might be the right anchor
+        workout_duration = int(official_duration or v_watch or performance.get("duration", 0))
+        
+        # Clip HR values to duration to match C# logic
+        if workout_duration > 0 and len(raw_hr_values) > workout_duration:
+            # We usually skip the FIRST N samples (intro/lead-in)
+            hr_values = raw_hr_values[-workout_duration:]
+        else:
+            hr_values = raw_hr_values
+
         if hr_values and max_hr > 0:
-            # Standard Garmin zones: 50%, 60%, 70%, 80%, 90% of max
-            # Zone 1: 50-60%, Zone 2: 60-70%, Zone 3: 70-80%, Zone 4: 80-90%, Zone 5: 90-100%
-            hr_boundaries = [
-                (0.50 * max_hr, 0.60 * max_hr),
-                (0.60 * max_hr, 0.70 * max_hr),
-                (0.70 * max_hr, 0.80 * max_hr),
-                (0.80 * max_hr, 0.90 * max_hr),
-                (0.90 * max_hr, max_hr)
-            ]
+            # 1. Try to use boundaries from the metric definition (most ride-specific)
+            hr_zones_def = hr_metric.get("zones") or []
+            b = []
+            if hr_zones_def:
+                for i in range(1, 6):
+                    z = next((zd for zd in hr_zones_def if zd.get("slug") == f"zone{i}"), None)
+                    if z:
+                        # Ensure it's BPM, not Power (Power floors are usually 0, 114, 132 etc)
+                        val = int(z.get("min_value") or 0)
+                        if val < 50 and i > 1: # Clearly not BPM, fallback
+                            b = []
+                            break
+                        b.append(val)
             
-            # Garmin expects [below_z1, z1, z2, z3, z4, z5]
-            # Initialize with 6 buckets (index 0 is below Z1)
-            hr_durations = [0] * 6
+            # 2. Fallback to standard 50-90% calculation if metric zones are suspect/missing
+            if not b or len(b) < 5:
+                # Use standard Peloton/Garmin integer boundaries based on percentage of Max HR
+                def p_floor(p, m): return int(p * m + 0.5)
+                b = [p_floor(p, max_hr) for p in [0.5, 0.6, 0.7, 0.8, 0.9]]
+            
+            durations = [0] * 6
             for val in hr_values:
                 if val is None: continue
-                
-                # Check if below Zone 1 (50% max_hr)
-                if val < hr_boundaries[0][0]:
-                    hr_durations[0] += 1
-                    continue
-                    
-                for idx, (low, high) in enumerate(hr_boundaries):
-                    # Make it slightly more robust with float comparison
-                    if val >= low and (val < high or (idx == 4 and val >= high)):
-                        hr_durations[idx + 1] += 1
-                        break
+                # Bucketing samples based on floor boundaries
+                if val >= b[4]: durations[5] += 1
+                elif val >= b[3]: durations[4] += 1
+                elif val >= b[2]: durations[3] += 1
+                elif val >= b[1]: durations[2] += 1
+                elif val >= b[0]: durations[1] += 1
+                else: durations[0] += 1
             
-            session.time_in_hr_zone = hr_durations
+            session.time_in_hr_zone = durations
         else:
             # Fallback if no HR data or Max HR
             hr_zones_def = hr_metric.get("zones") or []
@@ -845,11 +863,15 @@ class FitConverter:
         return ftp
 
     def _get_user_max_hr(self, performance: Dict[str, Any], user_data: Optional[Dict[str, Any]] = None) -> Optional[int]:
-        # 1. Check user_data
+        # 1. Check user_data (keys are often lowercase in Peloton responses)
         if user_data:
-            max_hr = user_data.get("Customized_Max_Heart_Rate")
-            if max_hr:
-                return int(max_hr)
+            possible_keys = ["customized_max_heart_rate", "Customized_Max_Heart_Rate", 
+                             "estimated_max_heart_rate", "Estimated_Max_Heart_Rate",
+                             "default_max_heart_rate", "Default_Max_Heart_Rate"]
+            for key in possible_keys:
+                max_hr = user_data.get(key)
+                if max_hr:
+                    return int(max_hr)
 
         # 2. Check performance metrics
         hr_metric = next((m for m in (performance.get("metrics") or []) if m.get("slug") == "heart_rate"), {})
@@ -862,11 +884,12 @@ class FitConverter:
         
         # 3. Check summary
         summary = performance.get("summary") or {}
-        max_hr = summary.get("max_heart_rate")
-        if max_hr:
-            return int(max_hr)
+        p_max = summary.get("max_heart_rate")
+        if p_max:
+            return int(p_max)
 
-        return None
+        # Final Fallback to standard 178
+        return 178
 
     # Helper methods
     def _get_metric_values(self, metrics: List[Dict], slug: str) -> Optional[List[float]]:
